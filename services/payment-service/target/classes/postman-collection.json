@@ -1,0 +1,68 @@
+{
+  "info": {
+    "name": "Payment Service API",
+    "description": "Postman collection for ClaimSwift Payment Service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8084",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/payments/health"
+      }
+    },
+    {
+      "name": "Process Payment",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/payments",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"claimId\": 1,\n  \"approvedAmount\": 50000.00,\n  \"bankAccountNumber\": \"1234567890\",\n  \"bankName\": \"HDFC Bank\",\n  \"ifscCode\": \"HDFC0001234\",\n  \"accountHolderName\": \"John Doe\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Get Payment by ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/payments/1"
+      }
+    },
+    {
+      "name": "Get Payment by Claim ID",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/payments/claim/1"
+      }
+    },
+    {
+      "name": "Get All Payments",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/payments"
+      }
+    },
+    {
+      "name": "Retry Failed Payment",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/v1/payments/1/retry"
+      }
+    }
+  ]
+}
