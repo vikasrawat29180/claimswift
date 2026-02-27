@@ -1,0 +1,29 @@
+server:
+  port: 8086
+
+jwt:
+  secret: 12345678901234567890123456789012
+  expiration: 3600000
+
+spring:
+  application:
+    name: notification-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/notification_db?useSSL=false&serverTimezone=UTC
+    username: root
+    password: Axelblaze10
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
