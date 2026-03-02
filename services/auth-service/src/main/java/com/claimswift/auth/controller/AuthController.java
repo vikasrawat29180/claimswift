@@ -1,6 +1,7 @@
 package com.claimswift.auth.controller;
 
 import com.claimswift.auth.dto.*;
+import com.claimswift.auth.exception.InvalidTokenException;
 import com.claimswift.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -45,4 +46,7 @@ public class AuthController {
     public AuthResponse unlock(@PathVariable String username){
         return service.unlockAccount(username);
     }
+    
+    
+    
 }

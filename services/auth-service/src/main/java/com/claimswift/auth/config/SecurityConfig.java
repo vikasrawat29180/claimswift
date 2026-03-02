@@ -1,6 +1,7 @@
 package com.claimswift.auth.config;
 
 import jakarta.servlet.http.HttpServletResponse;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.*;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -56,6 +57,7 @@ public class SecurityConfig {
                     .requestMatchers("/auth/**").permitAll()
                     .requestMatchers("/user/**").hasRole("USER")
                     .requestMatchers("/manager/**").hasRole("MANAGER")
+                    .requestMatchers("/actuator/**").permitAll()
                     .anyRequest().authenticated()
             )
 

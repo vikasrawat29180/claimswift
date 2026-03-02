@@ -29,7 +29,7 @@ class JwtFilterTest {
         FilterChain chain = mock(FilterChain.class);
 
         when(blacklist.isBlacklisted("token")).thenReturn(false);
-        when(jwtService.isTokenValid("token")).thenReturn(true);
+        when(jwtService.isValid("token")).thenReturn(true);
         when(jwtService.extractUsername("token")).thenReturn("john");
         when(jwtService.extractRoles("token")).thenReturn(List.of("USER"));
 

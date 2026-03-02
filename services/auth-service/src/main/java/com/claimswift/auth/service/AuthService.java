@@ -15,7 +15,6 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,7 +35,7 @@ public class AuthService {
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepo.existsByUsername(request.getUsername()))
-            throw new RuntimeException("Username already taken");
+            throw new RuntimeException("Username already exists");
 
         User user = new User();
         user.setUsername(request.getUsername());
@@ -46,7 +45,6 @@ public class AuthService {
         user.setMfaEnabled(true);
         user.setFailedAttempts(0);
 
-        /* SECURITY FIX → force USER role */
         Role role = roleRepo.findByName("USER")
                 .orElseGet(() -> roleRepo.save(new Role("USER")));
 
@@ -65,15 +63,10 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
 
         User user = userRepo.findByUsername(request.getUsername())
-                .orElseThrow(() -> {
-                    saveAudit(request.getUsername(), false, "User not found");
-                    return new InvalidCredentialsException();
-                });
+                .orElseThrow(() -> new InvalidCredentialsException());
 
-        if (!user.isAccountNonLocked()) {
-            saveAudit(user.getUsername(), false, "Account locked");
+        if (!user.isAccountNonLocked())
             throw new AccountLockedException();
-        }
 
         if (!encoder.matches(request.getPassword(), user.getPassword())) {
 
@@ -84,43 +77,35 @@ public class AuthService {
                 user.setAccountNonLocked(false);
                 user.setLockTime(new Date());
                 userRepo.save(user);
-
-                saveAudit(user.getUsername(), false, "Account locked after max attempts");
                 throw new AccountLockedException();
             }
 
             userRepo.save(user);
-            saveAudit(user.getUsername(), false, "Invalid password");
             throw new InvalidCredentialsException();
         }
 
         user.setFailedAttempts(0);
 
-        /* MFA DISABLED */
+        /* no MFA */
         if (!user.isMfaEnabled()) {
-            saveAudit(user.getUsername(), true, "Login success (no MFA)");
-            userRepo.save(user);
-            return new LoginResponse("Login successful", false);
+
+            String token = jwtService.generateToken(
+                    user.getUsername(),
+                    user.getRoles().stream().map(Role::getName).toList()
+            );
+
+            return new LoginResponse(token, false);
         }
 
-        /* OTP GENERATION */
+        /* generate OTP */
         String otp = String.valueOf(100000 + new SecureRandom().nextInt(900000));
-        String hash = encoder.encode(otp);
-
-        user.setOtpHash(hash);
+        user.setOtpHash(encoder.encode(otp));
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
         userRepo.save(user);
 
-        /* EMAIL SEND SAFE */
-        try {
-            emailService.sendOtp(user.getEmail(), otp);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to send OTP email");
-        }
+        emailService.sendOtp(user.getEmail(), otp);
 
-        saveAudit(user.getUsername(), true, "OTP generated and sent");
-
-        return new LoginResponse("OTP sent to email", true);
+        return new LoginResponse("OTP sent", true);
     }
 
     /* ================= VERIFY MFA ================= */
@@ -130,47 +115,43 @@ public class AuthService {
                 .orElseThrow(() -> new UserNotFoundException(request.getUsername()));
 
         if (user.getOtpHash() == null ||
-                user.getOtpExpiry() == null ||
-                user.getOtpExpiry().isBefore(LocalDateTime.now()) ||
-                !encoder.matches(request.getCode(), user.getOtpHash())) {
-
-            saveAudit(user.getUsername(), false, "Invalid OTP");
+            user.getOtpExpiry() == null ||
+            user.getOtpExpiry().isBefore(LocalDateTime.now()) ||
+            !encoder.matches(request.getCode(), user.getOtpHash()))
+        {
             throw new InvalidOtpException();
         }
 
-        List<String> roleNames = user.getRoles()
+        List<String> roles = user.getRoles()
                 .stream()
                 .map(Role::getName)
                 .toList();
 
-        String token = jwtService.generateToken(user.getUsername(), roleNames);
+        String token = jwtService.generateToken(user.getUsername(), roles);
 
         user.setOtpHash(null);
         user.setOtpExpiry(null);
         userRepo.save(user);
 
-        saveAudit(user.getUsername(), true, "MFA verified");
-
         return new AuthResponse(
-                "MFA Verified Successfully",
+                "MFA verified",
                 user.getUsername(),
-                roleNames,
+                roles,
                 token
         );
     }
 
     /* ================= LOGOUT ================= */
-    public void logout(String header) {
+    public void logout(String header){
 
-        if (header == null || !header.startsWith("Bearer "))
+        if(header == null || !header.startsWith("Bearer "))
             return;
 
-        String token = header.substring(7);
-        blacklistService.blacklist(token);
+        blacklistService.blacklist(header.substring(7));
     }
 
     /* ================= UNLOCK ================= */
-    public AuthResponse unlockAccount(String username) {
+    public AuthResponse unlockAccount(String username){
 
         User user = userRepo.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException(username));
@@ -181,26 +162,36 @@ public class AuthService {
 
         userRepo.save(user);
 
-        saveAudit(username, true, "Account unlocked");
-
         return new AuthResponse(
-                "Account unlocked successfully",
+                "Account unlocked",
                 username,
                 null,
                 null
         );
     }
 
-    /* ================= AUDIT ================= */
-    private void saveAudit(String username, boolean success, String message) {
+    /* ================= VALIDATE TOKEN ================= */
+    public AuthResponse validateToken(String header) throws InvalidTokenException{
 
-        loginAuditRepo.save(
-                LoginAudit.builder()
-                        .username(username)
-                        .success(success)
-                        .message(message)
-                        .timestamp(LocalDateTime.now())
-                        .build()
+        if(header == null || !header.startsWith("Bearer "))
+            throw new InvalidTokenException();
+
+        String token = header.substring(7);
+
+        if(blacklistService.isBlacklisted(token))
+            throw new InvalidTokenException();
+
+        if(!jwtService.isValid(token))
+            throw new InvalidTokenException();
+
+        String username = jwtService.extractUsername(token);
+        List<String> roles = jwtService.extractRoles(token);
+
+        return new AuthResponse(
+                "Token valid",
+                username,
+                roles,
+                token
         );
     }
 }
