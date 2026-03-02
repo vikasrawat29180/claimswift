@@ -1,0 +1,6 @@
+com\claimswift\auth\AuthServiceApplicationTests.class
+com\claimswift\auth\AuthControllerTest.class
+com\claimswift\auth\AuthorizationTest.class
+com\claimswift\auth\ValidationTest.class
+com\claimswift\auth\AuthServiceTest.class
+com\claimswift\auth\JwtFilterTest.class
