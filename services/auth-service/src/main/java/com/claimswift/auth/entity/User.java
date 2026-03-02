@@ -48,15 +48,17 @@ public class User {
     )
     @Builder.Default
     private Set<Role> roles = new HashSet<>();
-
-    private String mfaSecret;
+    
+    
     private int failedAttempts;
 
     @Temporal(TemporalType.TIMESTAMP)
     private Date lockTime;
-
+    
+    @Column(name="otp_hash")
     private String otpHash;
     
+    @Column(name="otp_expiry")
     private LocalDateTime otpExpiry;
 
 	

@@ -6,15 +6,12 @@ import com.claimswift.auth.exception.*;
 import com.claimswift.auth.repository.*;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +28,10 @@ public class AuthService {
 
     private static final int MAX_ATTEMPTS = 3;
 
+    private static final Set<String> ALLOWED_ROLES =
+            Set.of("USER","MANAGER","ADMIN");
+
+
     /* ================= REGISTER ================= */
     public AuthResponse register(RegisterRequest request) {
 
@@ -45,29 +46,51 @@ public class AuthService {
         user.setMfaEnabled(true);
         user.setFailedAttempts(0);
 
-        Role role = roleRepo.findByName("USER")
-                .orElseGet(() -> roleRepo.save(new Role("USER")));
+        /* ===== ROLE VALIDATION ===== */
+        Set<String> requestedRoles = request.getRoles();
 
-        user.setRoles(Set.of(role));
+        if (requestedRoles == null || requestedRoles.isEmpty()) {
+            requestedRoles = Set.of("USER");
+        }
+
+        for(String r : requestedRoles){
+            if(!ALLOWED_ROLES.contains(r.toUpperCase()))
+                throw new RuntimeException("Invalid role: " + r);
+        }
+
+        /* ===== ROLE ASSIGNMENT ===== */
+        Set<Role> roles = requestedRoles.stream()
+                .map(roleName ->
+                        roleRepo.findByName(roleName.toUpperCase())
+                                .orElseGet(() ->
+                                        roleRepo.save(new Role(roleName.toUpperCase()))
+                                )
+                )
+                .collect(java.util.stream.Collectors.toSet());
+
+        user.setRoles(roles);
         userRepo.save(user);
 
         return new AuthResponse(
                 "User registered successfully",
                 user.getUsername(),
-                List.of("USER"),
+                roles.stream().map(Role::getName).toList(),
                 null
         );
     }
+
 
     /* ================= LOGIN ================= */
     public LoginResponse login(LoginRequest request) {
 
         User user = userRepo.findByUsername(request.getUsername())
-                .orElseThrow(() -> new InvalidCredentialsException());
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!user.isAccountNonLocked())
             throw new AccountLockedException();
 
+
+        /* ===== PASSWORD CHECK ===== */
         if (!encoder.matches(request.getPassword(), user.getPassword())) {
 
             int attempts = user.getFailedAttempts() + 1;
@@ -86,7 +109,7 @@ public class AuthService {
 
         user.setFailedAttempts(0);
 
-        /* no MFA */
+        /* ===== NO MFA ===== */
         if (!user.isMfaEnabled()) {
 
             String token = jwtService.generateToken(
@@ -94,19 +117,22 @@ public class AuthService {
                     user.getRoles().stream().map(Role::getName).toList()
             );
 
-            return new LoginResponse(token, false);
+            return new LoginResponse(token,false);
         }
 
-        /* generate OTP */
+        /* ===== MFA OTP GENERATION ===== */
+
         String otp = String.valueOf(100000 + new SecureRandom().nextInt(900000));
+
         user.setOtpHash(encoder.encode(otp));
         user.setOtpExpiry(LocalDateTime.now().plusMinutes(5));
         userRepo.save(user);
 
         emailService.sendOtp(user.getEmail(), otp);
 
-        return new LoginResponse("OTP sent", true);
+        return new LoginResponse("OTP sent",true);
     }
+
 
     /* ================= VERIFY MFA ================= */
     public AuthResponse verifyMfa(MfaVerifyRequest request) {
@@ -129,6 +155,7 @@ public class AuthService {
 
         String token = jwtService.generateToken(user.getUsername(), roles);
 
+        /* CLEAR OTP AFTER SUCCESS */
         user.setOtpHash(null);
         user.setOtpExpiry(null);
         userRepo.save(user);
@@ -141,6 +168,7 @@ public class AuthService {
         );
     }
 
+
     /* ================= LOGOUT ================= */
     public void logout(String header){
 
@@ -149,6 +177,7 @@ public class AuthService {
 
         blacklistService.blacklist(header.substring(7));
     }
+
 
     /* ================= UNLOCK ================= */
     public AuthResponse unlockAccount(String username){
@@ -169,6 +198,7 @@ public class AuthService {
                 null
         );
     }
+
 
     /* ================= VALIDATE TOKEN ================= */
     public AuthResponse validateToken(String header) throws InvalidTokenException{

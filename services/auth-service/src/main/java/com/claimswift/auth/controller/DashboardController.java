@@ -27,13 +27,12 @@ public class DashboardController {
     public ResponseEntity<?> managerDashboard() {
         return ResponseEntity.ok("Welcome to Manager Dashboard!");
     }
-
-    /* =========================
-       USER SETTINGS (optional)
-       ========================= */
-    @GetMapping("/user/settings")
-    @PreAuthorize("hasRole('USER')")
-    public ResponseEntity<?> userSettings() {
-        return ResponseEntity.ok("User settings page");
+    
+    @GetMapping("/admin/dashboard")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> adminDashboard() {
+        return ResponseEntity.ok("Welcome to Admin Dashboard!");
     }
+
+    
 }
