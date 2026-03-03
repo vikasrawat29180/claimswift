@@ -2,23 +2,16 @@ package com.claimswift.notification.exception;
 
 import java.time.LocalDateTime;
 
-import com.claimswift.notification.config.WebSocketConfig;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private final WebSocketConfig webSocketConfig;
-
-    GlobalExceptionHandler(WebSocketConfig webSocketConfig) {
-        this.webSocketConfig = webSocketConfig;
-    }
-
-    @ExceptionHandler (NotificationNotFoundException.class)
+    @ExceptionHandler(NotificationNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(
             NotificationNotFoundException ex) {
 

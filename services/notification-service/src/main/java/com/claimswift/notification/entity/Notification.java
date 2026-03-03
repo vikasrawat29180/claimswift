@@ -2,11 +2,10 @@ package com.claimswift.notification.entity;
 
 import java.time.LocalDateTime;
 
-import com.claimswift.notification.enums.NotificationStatus;
-import com.claimswift.notification.enums.NotificationType;
+
 
 import jakarta.persistence.*;
-import lombok.Data;
+
 import lombok.Getter;
 import lombok.Setter;
 

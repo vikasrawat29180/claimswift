@@ -1,4 +1,5 @@
 package com.claimswift.notification.exception;
+
 public class NotificationNotFoundException 
         extends RuntimeException {
 
