@@ -1,7 +1,10 @@
 package com.example.demo.controller;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 
 import com.example.demo.dto.ClaimDto;
 import com.example.demo.entity.Claim;
@@ -22,6 +25,7 @@ public class ClaimController {
     // 1️⃣ Submit Claim
     // ================================
     @PostMapping
+    @PreAuthorize("hasRole('USER')")
     public Claim submit(@RequestBody ClaimDto dto) {
         return service.submitClaim(dto);
     }
@@ -30,6 +34,7 @@ public class ClaimController {
     // 2️⃣ Update Claim Status
     // ================================
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('MANAGER')")
     public Claim updateStatus(
             @PathVariable Long id,
             @RequestParam ClaimStatus status) {
@@ -63,5 +68,10 @@ public class ClaimController {
             @RequestParam ClaimStatus status) {
 
         return service.getClaimsByStatus(status);
+    }
+    
+    @GetMapping("/test")
+    public String test(Authentication auth){
+        return "Authorized access for user: " + auth.getName();
     }
 }
