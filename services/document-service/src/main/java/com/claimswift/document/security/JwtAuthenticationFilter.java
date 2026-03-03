@@ -6,13 +6,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Collections;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -34,21 +35,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 String token = authHeader.substring(7);
 
-                Long userId = jwtUtil.extractUserId(token);
+                if (jwtUtil.isTokenValid(token)) {
+                    String username = jwtUtil.extractUsername(token);
+                    
+                    List<SimpleGrantedAuthority> authorities = jwtUtil.extractRoles(token)
+                            .stream()
+                            .map(r -> new SimpleGrantedAuthority("ROLE_" + r))
+                            .toList();
 
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userId.toString(),
-                                null,
-                                Collections.emptyList()
-                        );
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    username,
+                                    null,
+                                    authorities
+                            );
 
-                authentication.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
+                    authentication.setDetails(
+                            new WebAuthenticationDetailsSource().buildDetails(request)
+                    );
 
-                SecurityContextHolder.getContext()
-                        .setAuthentication(authentication);
+                    SecurityContextHolder.getContext()
+                            .setAuthentication(authentication);
+                }
             }
 
         } catch (Exception ex) {

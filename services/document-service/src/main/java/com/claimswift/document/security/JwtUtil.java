@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.util.List;
 
 @Component
 public class JwtUtil {
@@ -26,15 +27,34 @@ public class JwtUtil {
                 .getBody();
     }
 
-    public Long extractUserId(String token) {
-        return Long.parseLong(
-                extractAllClaims(token).getSubject()
-        );
+    public String extractUsername(String token) {
+        return extractAllClaims(token).getSubject();
     }
 
-    public String generateToken(Long userId) {
+    public List<String> extractRoles(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.get("roles", List.class);
+    }
+
+    public boolean isTokenExpired(String token) {
+        return extractAllClaims(token)
+                .getExpiration()
+                .before(new java.util.Date());
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            extractAllClaims(token);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public String generateToken(String username, List<String> roles) {
         return Jwts.builder()
-                .setSubject(String.valueOf(userId))
+                .setSubject(username)
+                .claim("roles", roles)
                 .signWith(signingKey, SignatureAlgorithm.HS256)
                 .compact();
     }

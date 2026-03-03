@@ -1,15 +1,15 @@
 server:
-  port: 8082
+  port: 8084
 
 spring:
+  application:
+    name: document-service
+
   datasource:
     url: jdbc:mysql://localhost:3306/document_db
     username: root
-    password: 12345		
-claim-service:
-  url: http://localhost:8081
-
-
+    password: 12345
+    driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
     hibernate:
@@ -19,9 +19,15 @@ claim-service:
       hibernate:
         format_sql: true
 
+services:
+  claim-service:
+    url: http://localhost:8082
+  auth-service:
+    url: http://localhost:8081
+
 file:
   upload-dir: C:/claimswift/uploads
   max-size: 5MB
 
 jwt:
-  secret: 12345678901234567890123456789012345678901234567890
+  secret: mysecretkeymysecretkeymysecretkey_1234

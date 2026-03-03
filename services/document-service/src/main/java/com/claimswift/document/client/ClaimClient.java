@@ -5,8 +5,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.claimswift.document.dto.ClaimValidationResponse;
 
-@FeignClient(name = "claim-service", url = "${claim-service.url}")
-
+@FeignClient(name = "claim-service", url = "${services.claim-service.url}")
 public interface ClaimClient {
 
     @GetMapping("/api/v1/claims/{id}/validate")
